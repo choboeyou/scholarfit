@@ -3,21 +3,23 @@ import pandas as pd
 import numpy as np
 import os
 import re
-import traceback  # 에러 추적용
+import traceback
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# 절대 경로 기준점 설정
-base_dir = os.path.dirname(os.path.abspath(__file__))
-app = Flask(__name__, template_folder=os.path.join(base_dir, 'templates'))
+# [핵심 수정] 한 칸 상위 폴더에 위치한 templates 폴더를 바라보도록 절대 경로 설정 변경
+base_dir = os.path.dirname(os.path.abspath(__file__)) # APP 폴더 위치
+parent_dir = os.path.dirname(base_dir)                # scholarfit (상위 폴더) 위치
+
+app = Flask(__name__, template_folder=os.path.join(parent_dir, 'templates'))
 
 print("🔄 장학금 데이터 로딩 프로세스 시작...")
 csv_filename = "한국장학재단_학자금지원정보(고등학생)_20260511.csv"
 
-# 1. 여러 경로에서 파일 탐색
+# 여러 경로에서 파일 탐색
 possible_paths = [
+    os.path.join(parent_dir, csv_filename),
     os.path.join(base_dir, csv_filename),
-    os.path.join(base_dir, "..", csv_filename),
     csv_filename,
     f"APP/{csv_filename}"
 ]
@@ -28,7 +30,6 @@ for path in possible_paths:
         target_path = path
         break
 
-# 2. 안전한 데이터프레임 생성 (실패 시 공백 데이터로 가동 유지)
 try:
     if target_path:
         print(f"📍 데이터 파일을 찾았습니다: {target_path}")
@@ -37,20 +38,18 @@ try:
         except Exception:
             df = pd.read_csv(target_path, encoding="utf-8")
     else:
-        # 폴더 내 아무 CSV나 탐색
-        csv_files = [f for f in os.listdir(base_dir) if f.endswith('.csv')]
+        # 상위 폴더나 현재 폴더 내 아무 CSV나 탐색
+        csv_files = [f for f in os.listdir(parent_dir) if f.endswith('.csv')] or [f for f in os.listdir(base_dir) if f.endswith('.csv')]
         if csv_files:
-            df = pd.read_csv(os.path.join(base_dir, csv_files[0]), encoding="cp949")
+            df = pd.read_csv(os.path.join(parent_dir, csv_files[0]), encoding="cp949")
         else:
             print("⚠️ CSV 파일을 찾을 수 없어 빈 테이블로 엔진을 시작합니다.")
             df = pd.DataFrame(columns=['운영기관명', '상품명', '학자금유형구분', '성적기준 상세내용', '소득기준 상세내용', '특정자격 상세내용', '지역거주여부 상세내용', '자격제한 상세내용', '홈페이지주소'])
 except Exception as e:
-    print(f"❌ 데이터 로드 중 심각한 오류 발생: {str(e)}")
     df = pd.DataFrame(columns=['운영기관명', '상품명', '학자금유형구분', '성적기준 상세내용', '소득기준 상세내용', '특정자격 상세내용', '지역거주여부 상세내용', '자격제한 상세내용', '홈페이지주소'])
 
 df = df.fillna("")
 
-# 3. 매칭 엔진 초기화 (데이터가 있을 때만 학습)
 print("🤖 매칭 엔진 빌드 중...")
 vectorizer = TfidfVectorizer(ngram_range=(1, 2))
 
@@ -69,18 +68,16 @@ else:
     df['ai_text'] = ""
     tfidf_matrix = None
 
-print("🚀 엔진 세팅 완료! 무료 서버 최적화 모드로 구동됩니다.")
+print("🚀 엔진 세팅 완료!")
 
-# 메인 페이지 접속 시 발생할 수 있는 에러 포착
 @app.route('/')
 def home():
     try:
         return render_template('index.html')
     except Exception as e:
-        # templates 파일을 못 찾을 경우 브라우저 화면에 에러를 직접 출력해 줍니다.
         error_msg = f"<h3>❌ 렌더링 에러 발생!</h3>" \
                     f"<p><b>이유:</b> {str(e)}</p>" \
-                    f"<p><b>현재 서버 내 templates 경로:</b> {os.path.join(base_dir, 'templates')}</p>" \
+                    f"<p><b>현재 지정된 templates 주소:</b> {os.path.join(parent_dir, 'templates')}</p>" \
                     f"<pre>{traceback.format_exc()}</pre>"
         return error_msg, 500
 
