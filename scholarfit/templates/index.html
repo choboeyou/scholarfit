@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScholarFit - 맞춤형 장학금 탐색</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root { --lime: #DEFF9A; --bg: #0A0A0A; --card: #141414; }
+        body { background-color: var(--bg); color: white; font-family: 'Pretendard', sans-serif; margin: 0; padding: 40px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 50px; }
+        h1 { font-size: 3rem; margin-bottom: 10px; font-weight: 700; letter-spacing: -1px; }
+        h1 span { color: var(--lime); }
+        header p { color: #aaa; font-size: 1.1rem; }
+        
+        .search-box { background: var(--card); padding: 35px; border-radius: 24px; border: 1px solid rgba(222, 255, 154, 0.1); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        .input-group { margin-bottom: 25px; }
+        label { display: block; margin-bottom: 12px; color: var(--lime); font-weight: 600; font-size: 1.05rem; }
+        select, textarea { width: 100%; padding: 16px; border-radius: 14px; border: 1px solid #2cf; background: #161616; color: white; font-size: 1rem; box-sizing: border-box; transition: 0.3s; border: 1px solid #333; }
+        select:focus, textarea:focus { border-color: var(--lime); outline: none; }
+        textarea { height: 130px; resize: none; line-height: 1.5; }
+        
+        button { width: 100%; padding: 16px; border-radius: 14px; border: none; background: var(--lime); color: black; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.3s; }
+        button:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(222, 255, 154, 0.3); }
+
+        #results { margin-top: 50px; }
+        .scholar-card { background: var(--card); padding: 28px; border-radius: 20px; margin-bottom: 25px; border-left: 5px solid var(--lime); border-top: 1px solid rgba(255,255,255,0.03); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .ai-badge { background: rgba(222, 255, 154, 0.1); color: var(--lime); padding: 6px 14px; border-radius: 50px; font-size: 0.85rem; font-weight: bold; border: 1px solid rgba(222, 255, 154, 0.2); }
+        .institution { color: #888; font-size: 0.95rem; font-weight: 500; }
+        .title { font-size: 1.5rem; margin: 10px 0 15px 0; color: #fff; font-weight: 700; }
+        .target-text { color: #ddd; line-height: 1.6; font-size: 0.98rem; }
+        /* 기존 .reason 코드를 찾아서 height: 130px; 이 있다면 지우거나 대폭 늘려주세요 */
+.reason { 
+    background: rgba(222, 255, 154, 0.03); 
+    padding: 18px; 
+    border-radius: 12px; 
+    margin-top: 20px; 
+    font-size: 0.95rem; 
+    border-left: 3px solid rgba(222, 255, 154, 0.4); 
+    line-height: 1.6;
+    /* height 속성이 있다면 과감히 삭제! 자동으로 늘어나게 둡니다 */
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Scholar<span>Fit</span></h1>
+            <p>AI 시맨틱 매칭 기반 고등학생 맞춤형 장학금 탐색 시스템</p>
+        </header>
+
+        <div class="search-box">
+            <div class="input-group">
+                <label><i class="fa-solid fa-location-dot"></i> 1단계 거주 지역 필터링</label>
+                <select id="region">
+                    <option value="전국">전국 공통</option>
+                    <option value="경기">경기도</option>
+                    <option value="서울">서울특별시</option>
+                    <option value="인천">인천광역시</option>
+                    <option value="부산">부산광역시</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label><i class="fa-solid fa-brain"></i> 2단계 상황 설명 (AI 임베딩 맥락 분석)</label>
+                <textarea id="user_text" placeholder="예시: 경기도 수원에 살고 있는 고등학교 2학년 학생입니다. 웹툰 작가가 꿈이라 미술 학원에 다니고 싶은데, 다자녀 가정이라 부모님 경제적 부담을 조금이라도 덜어드릴 수 있는 장학금이 있을까요?"></textarea>
+            </div>
+            <button onclick="findScholarship()">AI 하이브리드 매칭 시작</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function findScholarship() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div style='text-align:center; padding: 50px;'>
+                    <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2.5rem; color: #DEFF9A; margin-bottom: 20px;"></i>
+                    <p style="color: #aaa;">Cloudflare 보안 인프라를 거쳐 AI 엔진이 1,140개의 데이터를 시맨틱 분석 중입니다...</p>
+                </div>`;
+
+            const requestData = {
+                region: document.getElementById('region').value,
+                user_text: document.getElementById('user_text').value
+            };
+
+            try {
+                const response = await fetch('/match', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+                resultsDiv.innerHTML = ""; 
+
+                if (data.length === 0) {
+                    resultsDiv.innerHTML = "<p style='text-align:center; color:#aaa; padding: 30px;'>조건에 만족하는 매칭 결과가 없습니다. 문장을 더 상세히 입력해 보세요.</p>";
+                    return;
+                }
+
+                // index.html 파일 내의 data.forEach 부분을 이 코드로 교체해 주세요!
+                data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'scholar-card';
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <span class="institution"><i class="fa-solid fa-building-government"></i> ${item.institution}</span>
+                            <span class="ai-badge">AI 종합 적합도 ${item.score}%</span>
+                        </div>
+                        <div class="title">${item.title}</div>
+                        <div class="target-text"><strong>지원 대상 요약:</strong> ${item.target}</div>
+                        <div class="reason">
+                            <span style="color: #DEFF9A; font-weight:700;"><i class="fa-solid fa-wand-magic-sparkles"></i> AI 하이브리드 추천 결과:</span><br>
+                            <p style="margin: 8px 0 12px 0; color: #ccc;">${item.reason}</p>
+                            <a href="${item.url}" target="_blank" style="color: #DEFF9A; text-decoration: none; font-size: 0.9rem; font-weight: bold;"><i class="fa-solid fa-arrow-up-right-from-square"></i> 해당 장학금 공식 홈페이지 공고 확인하기</a>
+                        </div>
+                    `;
+                    resultsDiv.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error("Error:", error);
+                resultsDiv.innerHTML = "<p style='text-align:center; color:#ff6b6b; padding: 30px;'>백엔드 서버 연산 중 오류가 발생했습니다. 터미널의 에러 로그를 확인해 주세요.</p>";
+            }
+        }
+    </script>
+</body>
+</html>
