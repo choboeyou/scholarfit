@@ -11,14 +11,35 @@ app = Flask(__name__)
 print("🔄 실제 장학금 데이터를 로드하는 중입니다...")
 csv_filename = "한국장학재단_학자금지원정보(고등학생)_20260511.csv"
 
-# Render 서버 환경 내부의 경로 자동 맞춤
-if not os.path.exists(csv_filename) and os.path.exists(f"APP/{csv_filename}"):
-    csv_filename = f"APP/{csv_filename}"
+# 1. 현재 폴더, 상위 폴더, APP 하위 폴더 경로 모두 탐색하며 파일 절대 경로 추적
+possible_paths = [
+    csv_filename,
+    os.path.join(os.path.dirname(__file__), csv_filename),
+    os.path.join(os.path.dirname(__file__), "..", csv_filename),
+    f"APP/{csv_filename}"
+]
 
-try:
-    df = pd.read_csv(csv_filename, encoding="cp949")
-except:
-    df = pd.read_csv(csv_filename, encoding="utf-8")
+target_path = None
+for path in possible_paths:
+    if os.path.exists(path):
+        target_path = path
+        break
+
+if target_path:
+    print(f"📍 데이터를 찾았습니다: {target_path}")
+    try:
+        df = pd.read_csv(target_path, encoding="cp949")
+    except:
+        df = pd.read_csv(target_path, encoding="utf-8")
+else:
+    # 2. 혹시나 파일명이 미세하게 다를 경우를 대비해 폴더 내 CSV 자동 검색 백업책
+    current_dir = os.path.dirname(__file__) or "."
+    csv_files = [f for f in os.listdir(current_dir) if f.endswith('.csv')]
+    if csv_files:
+        print(f"⚠️ 지정된 파일명이 없어 가장 유력한 파일({csv_files[0]})로 대체 로드합니다.")
+        df = pd.read_csv(os.path.join(current_dir, csv_files[0]), encoding="cp949")
+    else:
+        raise FileNotFoundError(f"❌ '{csv_filename}' 파일을 깃허브 저장소 내부에서 찾을 수 없습니다. 파일 위치를 확인해 주세요.")
 
 df = df.fillna("")
 
