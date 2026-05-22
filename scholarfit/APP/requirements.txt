@@ -1,5 +1,4 @@
 flask
 pandas
-sentence-transformers
 scikit-learn
 gunicorn
