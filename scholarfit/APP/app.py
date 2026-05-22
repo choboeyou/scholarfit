@@ -6,7 +6,9 @@ import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-app = Flask(__name__)
+# Render 환경에서 templates 폴더를 정확히 인식하도록 절대 경로 설정 보완
+base_dir = os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__, template_folder=os.path.join(base_dir, 'templates'))
 
 print("🔄 실제 장학금 데이터를 로드하는 중입니다...")
 csv_filename = "한국장학재단_학자금지원정보(고등학생)_20260511.csv"
@@ -14,8 +16,8 @@ csv_filename = "한국장학재단_학자금지원정보(고등학생)_20260511.
 # 1. 현재 폴더, 상위 폴더, APP 하위 폴더 경로 모두 탐색하며 파일 절대 경로 추적
 possible_paths = [
     csv_filename,
-    os.path.join(os.path.dirname(__file__), csv_filename),
-    os.path.join(os.path.dirname(__file__), "..", csv_filename),
+    os.path.join(base_dir, csv_filename),
+    os.path.join(base_dir, "..", csv_filename),
     f"APP/{csv_filename}"
 ]
 
@@ -33,7 +35,7 @@ if target_path:
         df = pd.read_csv(target_path, encoding="utf-8")
 else:
     # 2. 혹시나 파일명이 미세하게 다를 경우를 대비해 폴더 내 CSV 자동 검색 백업책
-    current_dir = os.path.dirname(__file__) or "."
+    current_dir = base_dir or "."
     csv_files = [f for f in os.listdir(current_dir) if f.endswith('.csv')]
     if csv_files:
         print(f"⚠️ 지정된 파일명이 없어 가장 유력한 파일({csv_files[0]})로 대체 로드합니다.")
